@@ -1,5 +1,5 @@
-var Ladybug = artifacts.require("Ladybug");
+var LadybugMinter = artifacts.require("LadybugMinter");
 
 module.exports = function(deployer) {
-  deployer.deploy(Ladybug);
+  deployer.deploy(LadybugMinter);
 };
