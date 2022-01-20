@@ -10,11 +10,11 @@ contract LadybugDrops is LadybugFactory {
     /**
      * @dev Modifier that prevents a date change once a drop has started.
      */
-   	modifier dropNotStarted(uint _index, uint _date) {
+   	modifier dropNotStarted(uint8 _index, uint _date) {
 		// the drop we're updating can't be starting within the hour.
-    	require(drops[_index].date == 0 || drops[_index].date > block.timestamp + (60 * 60));
+    	require(drops[_index].date == 0 || drops[_index].date > block.timestamp + (60 * 60), 'Drop starting too soon to change');
     	// the _date value must be two hours out from now
-    	require(_date > block.timestamp + (2 * 60 * 60));
+    	require(_date > block.timestamp + (2 * 60 * 60), 'New start date too close');
     	_;
   	}
 
@@ -22,11 +22,11 @@ contract LadybugDrops is LadybugFactory {
      * @dev Modifier to ensure a price change on an active drop will be a descrease.
      * Not allowing price increases on active drops.
      */
-   	modifier priceNotIncreased(uint _index, uint _price) {
+   	modifier priceNotIncreased(uint8 _index, uint _price) {
 		// the new price must be lower
-    	require(drops[_index].price > _price);
+    	require(drops[_index].price > _price, 'Price cannot increase');
     	// price drop must be for current or future drop
-    	require(_index >= _currentDropIndex());
+    	require(_index >= _currentDropIndex(), 'Drop has already completed');
     	_;
   	}
 
@@ -44,43 +44,59 @@ contract LadybugDrops is LadybugFactory {
     /**
      * @dev Update the price and date of non-active drops only.
      */
-    function updateDrop(uint _index, uint _price, uint _date) 
+    function updateDrop(uint8 _index, uint _price, uint _date) 
     	external dropNotStarted(_index, _date) onlyOwner {
         drops[_index].price = _price;
         drops[_index].date = _date;
+        // the price will go into effect on _date
+        drops[_index].price_date = _date;
     }
 
     /**
      * @dev Decrease the price of an active drop.  Useful if drops "stall out".
      */
-    function dropPrice(uint _index, uint _price) 
+    function dropPrice(uint8 _index, uint _price) 
     	external priceNotIncreased(_index, _price) onlyOwner {
         drops[_index].price = _price;
+        // the price will go into effect now, if the drops[_index].date < block.timestamp;
+        if (drops[_index].date < block.timestamp) {
+        	// drop is active, so set new price_date
+        	drops[_index].price_date = block.timestamp;
+        }
     }
 
     /**
-     * @dev Returns the next drop index that is not complete.  It does not need to be active.
+     * @dev Returns the current drop (0-3) in which the next ladybug would be minted.
+     * This does not take the drop date into account, so it might not be an active drop.
      */
-    function _currentDropIndex() private view returns (uint) {
-    	// there'll be no current drop if minting is complete
-    	if (ladybugs.length >= uint(_MAX_LADYBUGS)) revert('Minting is complete.');
-
+    function _currentDropIndex() internal view returns (uint8) {
     	for (uint i = drops.length - 1; i >= 0; i--) {
     		if (ladybugs.length >= drops[i].startAtIndex) {
-    			return i;
+    			return uint8(i);
 			}
     	}
-    	revert('No active drop');
+    	// should never reach this line of code
+    	revert('Error in _currentDropIndex');
     }
 
     /**
-     * @dev An active drop has a non-zero date and is not in the future.
+     * @dev Same call as status, but this one is 'internal'.  Breaking out the two
+     * is being done for gas efficiency, when status is needed internally.
      */
-    function activeDrop() public view returns (Drop memory) {
-    	Drop memory current = drops[_currentDropIndex()];
-    	// the dro must be active, which means there's a date set and not in the future
-    	if (current.date == 0 || current.date > block.timestamp) revert('No active drop');
-    	return current;
+    function status_internal() internal view returns (uint index, bool active, bool complete) {
+    	uint8 currentIndex = _currentDropIndex();
+    	bool isComplete = ladybugs.length >= _MAX_LADYBUGS;
+    	// a drop is active if all drops are not complete, the date is non-zero, 
+    	// and the blockchain time is greater than the drop date.
+    	bool isActive = isComplete != true && drops[currentIndex].date != 0 && drops[currentIndex].date <= block.timestamp;
+		return (currentIndex, isActive, isComplete);
+     }
+
+    /**
+     * @dev Return the current drop index and whether it's active or not.
+     */
+    function status() external view returns (uint index, bool active, bool complete) {
+    	return status_internal();
     }
 
 }

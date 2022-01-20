@@ -16,7 +16,7 @@ contract LadybugFactory is Ownable, ERC721 {
     // uint8 internal constant _RESERVED_LADYBUGS = 96;
     // TODO - THIS IS DEBUG ONLY WITH NUMBERS...
     uint16 internal constant _MAX_LADYBUGS = 24; 
-    uint8 internal constant _RESERVED_LADYBUGS = 4;
+    uint16 internal constant _RESERVED_LADYBUGS = 4;
     uint16 internal constant _TOKENS_PER_DROP = (_MAX_LADYBUGS - _RESERVED_LADYBUGS) / 4;
 
     struct Ladybug {
@@ -25,11 +25,12 @@ contract LadybugFactory is Ownable, ERC721 {
 
     Ladybug[] internal ladybugs;
 
+    // ordered by size for optimization
     struct Drop {
-        uint number;       // 1 to 4 (number of the drop), 0 would be the pre-mint at deployment
-        uint startAtIndex; // the ladybugs index at which this drop would begin
-        uint price;        // needs to be in wei (eth * 10^18)
-        uint date;         // uint in seconds since epoch
+        uint256 price;        // needs to be in wei (eth * 10^18)
+        uint256 date;         // uint in seconds since epoch
+        uint256 price_date;   // date the current price went into effect
+        uint16 startAtIndex; // the ladybugs index at which this drop would begin
     }
 
     /**
@@ -37,8 +38,6 @@ contract LadybugFactory is Ownable, ERC721 {
         
         The next four will each be (_MAX_LADYBUGS - _RESERVED_LADYBUGS)/4 ladybugs, 
         with a configurable drop date and price.  
-
-        The first drop will be scheduled immediately, at the block.timestamp.
      */
     Drop[4] internal drops;
 
@@ -46,11 +45,9 @@ contract LadybugFactory is Ownable, ERC721 {
      * @dev There are four drops, 1-4 in the drops array.
      */
     constructor() ERC721("LadybugMinter", "NFT") {
-        uint startAtIndex = _RESERVED_LADYBUGS;
-        for (uint i = 1; i <= drops.length; i++) {
-            // set the first drop date active
-            uint dropdate = i == 1 ? block.timestamp : 0;
-            drops[i-1] = Drop(i, startAtIndex, 0.015 ether, dropdate);
+        uint16 startAtIndex = _RESERVED_LADYBUGS;
+        for (uint8 i = 0; i < drops.length; i++) {
+            drops[i] = Drop(0.015 ether, 0, 0, startAtIndex);
             startAtIndex += _TOKENS_PER_DROP;
         }
     }
@@ -58,14 +55,14 @@ contract LadybugFactory is Ownable, ERC721 {
     /**
      * @dev The total supply of all ladybug tokens.
      */
-    function totalSupply() public pure returns (uint16) {
+    function totalSupply() external pure returns (uint16) {
         return _MAX_LADYBUGS;
     }
 
     /**
      * @dev Constant, number of tokens per drop.
      */
-    function tokensPerDrop() public pure returns (uint16) {
+    function tokensPerDrop() internal pure returns (uint16) {
         return _TOKENS_PER_DROP;
     }
 
@@ -74,8 +71,8 @@ contract LadybugFactory is Ownable, ERC721 {
      */
     function getLadybugIdsByOwner(address _owner) external view returns(uint[] memory) {
         uint[] memory result = new uint[](balanceOf(_owner));
-        uint counter = 0;
-        for (uint i = 0; i < ladybugs.length; i++) {
+        uint16 counter = 0;
+        for (uint16 i = 0; i < ladybugs.length; i++) {
           if (ownerOf(ladybugs[i].tokenId) == _owner) {
             result[counter] = ladybugs[i].tokenId;
             counter++;
@@ -83,21 +80,5 @@ contract LadybugFactory is Ownable, ERC721 {
         }
         return result;
     }
-
-    /**
-     * @dev Return array of Ladybug objects owned by _owner.
-     */
-    function getLadybugsByOwner(address _owner) external view returns(Ladybug[] memory) {
-        Ladybug[] memory result = new Ladybug[](balanceOf(_owner));
-        uint counter = 0;
-        for (uint i = 0; i < ladybugs.length; i++) {
-          if (ownerOf(ladybugs[i].tokenId) == _owner) {
-            result[counter] = ladybugs[i];
-            counter++;
-          }
-        }
-        return result;
-    }
-
 
 }

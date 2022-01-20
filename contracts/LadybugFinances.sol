@@ -26,7 +26,7 @@ contract LadybugFinances is LadybugDrops {//, RoyaltiesV2Impl {
      */
     modifier royaltiesConstraint(uint16 basis) {
         // restrict the royalties to 4.5% at the most
-        require(_MAX_ROYALTY_VALUE >= basis);
+        require(_MAX_ROYALTY_VALUE >= basis, 'Royalty basis too high');
         _;
     }
 
@@ -67,18 +67,28 @@ contract LadybugFinances is LadybugDrops {//, RoyaltiesV2Impl {
     /**
      * @dev Display the balance of funds in the contract, onlyOwner.
      */
-    function balanceInContract() view public onlyOwner returns(uint) {
+    function balanceInContract() external view onlyOwner returns(uint) {
         return address(this).balance;
     }
 
     /**
-     * @dev Allows owner to transfer funds from contract, effectively paying himself.
+     * @dev Allows owner to transfer funds from contract, effectively paying oneself.
      */
-    function withdraw() external onlyOwner returns(uint) {
+    function withdrawAll() external onlyOwner returns(uint) {
         address _owner = owner();
         uint balance = address(this).balance;
         payable(_owner).transfer(balance);
         return balance;
+    }
+
+    /**
+     * @dev Allows owner to transfer funds from contract, effectively paying oneself.
+     */
+    function withdraw(uint _balance) external onlyOwner returns(uint) {
+        address _owner = owner();
+        require(_balance <= address(this).balance, 'Balance too high');
+        payable(_owner).transfer(_balance);
+        return _balance;
     }
 
 }

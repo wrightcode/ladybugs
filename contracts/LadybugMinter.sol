@@ -8,6 +8,9 @@ import "@openzeppelin/contracts/utils/Counters.sol";
  */
 contract LadybugMinter is LadybugFinances {
 
+    uint private constant DROP_TIME_TOLERANCE = (60*60*24)*30; // 30 days, ~1 month
+    uint private constant PRICE_TIME_TOLERANCE = (60*60*24)*14; // 14 days (2 weeks)
+
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIds;
 
@@ -22,7 +25,24 @@ contract LadybugMinter is LadybugFinances {
      * @dev Mint the reserved ERC721 tokens to the owner().
      */
     function mintReservedBugs() private onlyOwner {
-        for (uint8 i = 0; i < _RESERVED_LADYBUGS; i++) {
+        for (uint i = 0; i < _RESERVED_LADYBUGS; i++) {
+            _mintInternal(owner());
+        }
+    }
+
+    /**
+     * @dev Mint the remaining bugs in drop to owner, if stalled out (mint began > 1 month and price <= 0.001 ETH.
+     * The idea being that if no one is minting the ladybugs and the price has been lowered
+     * to entince more minting, then the owner may mint them.
+     */
+    function mintStalledDropToOwner() external onlyOwner {
+
+        (uint _index, bool _active, bool _complete) = status_internal();
+        require (_active, 'Drop not active');
+        require (drops[_index].date < block.timestamp - DROP_TIME_TOLERANCE, 'Drop not active long enough');
+        require (drops[_index].price <= 0.001 ether, 'Price too high');
+        require (drops[_index].price_date < block.timestamp - PRICE_TIME_TOLERANCE, 'Price not active long enough');
+        for (uint i = ladybugs.length; i < drops[_index].startAtIndex + _TOKENS_PER_DROP; i++) {
             _mintInternal(owner());
         }
     }
@@ -30,14 +50,14 @@ contract LadybugMinter is LadybugFinances {
     /**
      * @dev Count the current number of tokens minted.
      */
-    function totalMinted() public view returns (uint) {
+    function totalMinted() external view returns (uint) {
         return _tokenIds.current();
     }
 
     /**
      * @dev Count the remaning, unminted tokens.
      */
-    function unminted() public view returns (uint) {
+    function unminted() external view returns (uint) {
         return uint(_MAX_LADYBUGS) - _tokenIds.current();
     }
 
@@ -47,8 +67,9 @@ contract LadybugMinter is LadybugFinances {
      */
     function mint(address recipient) external payable returns (uint) {
         // if there's no active drop, error is thrown
-        Drop memory activeDrop = activeDrop();
-        require (msg.value >= activeDrop.price);
+        (uint _index, bool _active, bool _complete) = status_internal();
+        require (_active, 'Drop not active');
+        require (msg.value >= drops[_index].price, 'Offer lower than price');
         return _mintInternal(recipient);
     }
 
