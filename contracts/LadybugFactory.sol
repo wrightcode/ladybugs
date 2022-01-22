@@ -62,7 +62,7 @@ contract LadybugFactory is Ownable, ERC721 {
     /**
      * @dev Constant, number of tokens per drop.
      */
-    function tokensPerDrop() internal pure returns (uint16) {
+    function tokensPerDrop() external pure returns (uint16) {
         return _TOKENS_PER_DROP;
     }
 

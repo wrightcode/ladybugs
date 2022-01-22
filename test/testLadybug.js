@@ -141,6 +141,11 @@ contract("LadybugMinter", (accounts) => {
             const unminted = await contractInstance.unminted();
             expect(parseInt(unminted)).to.equal(20);
         });
+        it("tokens per drop", async () => {
+            const tokensPerDrop = await contractInstance.tokensPerDrop();
+            const unminted = await contractInstance.unminted();
+            expect(parseInt(tokensPerDrop)).to.equal(parseInt(unminted)/4);
+        });
         it("total supply equals total minted + total unminted", async () => {
             const totalSupply = await contractInstance.totalSupply();
             const totalMinted = await contractInstance.totalMinted();
