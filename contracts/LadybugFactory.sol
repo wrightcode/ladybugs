@@ -44,7 +44,7 @@ contract LadybugFactory is Ownable, ERC721 {
     /**
      * @dev There are four drops, 1-4 in the drops array.
      */
-    constructor() ERC721("LadybugMinter", "NFT") {
+    constructor() ERC721("Ladybug Power", "LADBYBUG") {
         uint16 startAtIndex = _RESERVED_LADYBUGS;
         for (uint8 i = 0; i < drops.length; i++) {
             drops[i] = Drop(0.015 ether, 0, 0, startAtIndex);
