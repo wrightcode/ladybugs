@@ -14,6 +14,9 @@ contract LadybugFinances is LadybugDrops {//, RoyaltiesV2Impl {
     address internal _royaltyRecipient;
     uint16 private _royaltyBasis = _DEFAULT_ROYALTY_VALUE;
 
+    // define a donation event
+    event DonationEvent(address indexed _address, uint _balance);
+
     /**
      * @dev Sets initial royalty recipient to be the owner()
      */
@@ -88,6 +91,16 @@ contract LadybugFinances is LadybugDrops {//, RoyaltiesV2Impl {
         address _owner = owner();
         require(_balance <= address(this).balance, 'Balance too high');
         payable(_owner).transfer(_balance);
+        return _balance;
+    }
+
+    /**
+     * @dev Allows owner to dontate funds from contract to a wallet, if owner wants to donate to a cause.
+     */
+    function donate(uint _balance, address _address) external onlyOwner returns(uint) {
+        require(_balance <= address(this).balance);
+        payable(_address).transfer(_balance);
+        emit DonationEvent(_address, _balance);
         return _balance;
     }
 

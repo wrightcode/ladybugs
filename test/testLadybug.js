@@ -96,7 +96,7 @@ async function increase(duration) {
 }
 
 contract("LadybugMinter", (accounts) => {
-    let [brownbear, larry, moe, curly, shemp] = accounts;
+    let [brownbear, larry, moe, curly, shemp, charity] = accounts;
     let contractInstance;
     testTime = getDateInSeconds();
 
@@ -384,9 +384,7 @@ contract("LadybugMinter", (accounts) => {
             let status = await contractInstance.status();
             expect(parseInt(status.index)).to.equal(2);
             expect(status.active).to.be.true;
-
             let drops = await contractInstance.getDrops();
-
             await contractInstance.mint(moe, {from: moe, value: drops[status.index].price, gas: 1000000 });
             await contractInstance.mint(larry, {from: larry, value: drops[status.index].price, gas: 1000000 });
 
@@ -602,6 +600,41 @@ contract("LadybugMinter", (accounts) => {
             const result = await contractInstance.contractURI();
             // hard-coded to test ipfs url
             expect(result).to.equal('ipfs://QmdUBpQ8tgeSB8cdkPpdawvvaXrubzBKVuKfygxtFAnhmW');
+        });
+    });
+
+    context("Donations", async () => {
+        it("donate funds by non-owner fails", async () => {
+            await utils.shouldThrow(contractInstance.donate(web3.utils.toWei('0.015', 'ether'), {from: curly}));
+        });
+        it("donate funds to donation account", async () => {
+            const donation_amount = web3.utils.toWei('0.0123', 'ether');
+
+            // let's grab the owners initial balance & contract balance
+            const charity_init_balance = await web3.eth.getBalance(charity);
+            const contract_init_balance = await contractInstance.balanceInContract();
+            expect(parseInt(contract_init_balance)).to.be.gt(0);
+
+            // make the withdrawl and get the gas cost from the transaction
+            const receipt = await contractInstance.donate(donation_amount, charity, {from: brownbear});
+            const tx = await web3.eth.getTransaction(receipt.tx);
+            const txReceipt = await web3.eth.getTransactionReceipt(receipt.receipt.transactionHash);
+            const gasCost = tx.gasPrice * txReceipt.gasUsed;
+
+            // balance after withdrawl should be zero
+            const contract_after_donation = await contractInstance.balanceInContract();
+
+            // console.log('donation_amount:          ' + donation_amount);
+            // console.log('gasCost:                    ' + gasCost);
+            // console.log('contract_init_balance:   ' + contract_init_balance);
+            // console.log('contract_after_donation: ' + contract_after_donation);
+            expect(parseInt(contract_after_donation)).to.equal(parseInt(contract_init_balance) - parseInt(donation_amount));
+            // the owners new balance should equal the initial balance plus the amount transfered from contract minus the gas costs
+            const charity_new_balance = await web3.eth.getBalance(charity);
+            // console.log('charity_init_balance: ' + charity_init_balance);
+            // console.log('charity_new_balance:  ' + charity_new_balance);
+            expect(parseInt(charity_new_balance)).to.equal(parseInt(charity_init_balance) + parseInt(donation_amount));
+
         });
     });
 
