@@ -11,8 +11,8 @@ import "@openzeppelin/contracts/utils/Counters.sol";
  */
 contract LadybugMinter is LadybugFinances {
 
-    uint private constant DROP_TIME_TOLERANCE = (60*60*24)*30; // 30 days, ~1 month
-    uint private constant PRICE_TIME_TOLERANCE = (60*60*24)*14; // 14 days (2 weeks)
+    uint private constant DROP_TIME_TOLERANCE = (60*60*24)*20; // 20 days
+    uint private constant PRICE_TIME_TOLERANCE = (60*60*24)*10; // 10 days
 
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIds;
@@ -46,7 +46,7 @@ contract LadybugMinter is LadybugFinances {
         (uint _index, bool _active, bool _complete) = status_internal();
         require (_active, 'Drop not active');
         require (drops[_index].date < block.timestamp - DROP_TIME_TOLERANCE, 'Drop not active long enough');
-        require (drops[_index].price <= 0.001 ether, 'Price too high');
+        require (drops[_index].price <= 0.01 ether, 'Price too high');
         require (drops[_index].price_date < block.timestamp - PRICE_TIME_TOLERANCE, 'Price not active long enough');
         for (uint i = ladybugs.length; i < drops[_index].startAtIndex + _TOKENS_PER_DROP; i++) {
             _mintInternal(owner());
@@ -98,7 +98,7 @@ contract LadybugMinter is LadybugFinances {
      * This is an ipfs uri with a trailing slash.
      */
     function _baseURI() internal virtual override pure returns (string memory) {
-        return "ipfs://QmdUBpQ8tgeSB8cdkPpdawvvaXrubzBKVuKfygxtFAnhmW/";
+        return "ipfs://QmYZ1DoiFDST81wUEF5EdkMGnFCxJ4icKRUQUME4qGUWno/";
     }
 
     /**
@@ -108,7 +108,7 @@ contract LadybugMinter is LadybugFinances {
     function contractURI() public pure returns (string memory) {
         // todo https://docs.opensea.io/docs/contract-level-metadata
         // this is the pinata directory of the numbers metadata
-        return "ipfs://QmdUBpQ8tgeSB8cdkPpdawvvaXrubzBKVuKfygxtFAnhmW";
+        return "ipfs://QmYZ1DoiFDST81wUEF5EdkMGnFCxJ4icKRUQUME4qGUWno";
     }
 
 }
