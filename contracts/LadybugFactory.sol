@@ -11,15 +11,13 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  */
 contract LadybugFactory is Ownable, ERC721 {
 
-    /**
-        The maximum number of ladybugs and the number that are reserved
-        for the owner, airdrops, giveaways, or for early sale on open sea.
-     */
-    // uint16 internal constant _MAX_LADYBUGS = 1440; 
-    // uint8 internal constant _RESERVED_LADYBUGS = 96;
+    address internal DEVELOPMENT_TEAM = 0x3254C065f85167003F165E134A391a6ec2c26279;
+
     // TODO - THIS IS DEBUG ONLY WITH NUMBERS...
-    uint16 internal constant _MAX_LADYBUGS = 24; 
-    uint16 internal constant _RESERVED_LADYBUGS = 4;
+    uint16 internal constant _MAX_LADYBUGS = 1440; 
+    uint16 internal constant _RESERVED_LADYBUGS_DEVELOPMENT = 96;
+    uint16 internal constant _RESERVED_LADYBUGS_OWNER = 32;
+    uint16 internal constant _RESERVED_LADYBUGS = _RESERVED_LADYBUGS_DEVELOPMENT + _RESERVED_LADYBUGS_OWNER;
     uint16 internal constant _TOKENS_PER_DROP = (_MAX_LADYBUGS - _RESERVED_LADYBUGS) / 4;
 
     struct Ladybug {
@@ -47,7 +45,7 @@ contract LadybugFactory is Ownable, ERC721 {
     /**
      * @dev There are four drops, 1-4 in the drops array.
      */
-    constructor() ERC721("Ladybug Power", "LADBYBUG") {
+    constructor() ERC721("Ladybug Power", "LADYBUG") {
         uint16 startAtIndex = _RESERVED_LADYBUGS;
         for (uint8 i = 0; i < drops.length; i++) {
             drops[i] = Drop(0.015 ether, 0, 0, startAtIndex);

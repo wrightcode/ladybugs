@@ -18,10 +18,11 @@
  *
  */
 
-// const HDWalletProvider = require('@truffle/hdwallet-provider');
-//
-// const fs = require('fs');
+const HDWalletProvider = require('@truffle/hdwallet-provider');
+
+const fs = require('fs');
 // const mnemonic = fs.readFileSync(".secret").toString().trim();
+const privatekey = fs.readFileSync(".secret").toString().trim();
 
 module.exports = {
   /**
@@ -65,6 +66,13 @@ module.exports = {
     // timeoutBlocks: 200,  // # of blocks before a deployment times out  (minimum/default: 50)
     // skipDryRun: true     // Skip dry run before migrations? (default: false for public nets )
     // },
+    rinkeby: {
+      provider: function() {
+        return new HDWalletProvider(privatekey, "wss://rinkeby.infura.io/ws/v3/391a7fe345a34a2db1008fa15679e8c7");
+      },
+      network_id: 4
+    }
+
     // Useful for private networks
     // private: {
     // provider: () => new HDWalletProvider(mnemonic, `https://network.io`),

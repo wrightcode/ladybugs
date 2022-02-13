@@ -28,7 +28,10 @@ contract LadybugMinter is LadybugFinances {
      * @dev Mint the reserved ERC721 tokens to the owner().
      */
     function mintReservedBugs() private onlyOwner {
-        for (uint i = 0; i < _RESERVED_LADYBUGS; i++) {
+        for (uint i = 0; i < _RESERVED_LADYBUGS_DEVELOPMENT; i++) {
+            _mintInternal(DEVELOPMENT_TEAM);
+        }
+        for (uint i = 0; i < _RESERVED_LADYBUGS_OWNER; i++) {
             _mintInternal(owner());
         }
     }

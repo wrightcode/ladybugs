@@ -4,6 +4,8 @@ var expect = require('chai').expect;
 
 const ethToWeiConversion = 10**18;
 
+const devWalletAddress = ''
+
 // variable to keep track of all expenses incurred by owner
 var brownbearStartingBalance = 0;
 // we jump around in blockchain time, because some actions are time-sensitive
@@ -123,7 +125,7 @@ contract("LadybugMinter", (accounts) => {
 
             // owner has four ladybugs
             let bugs = await contractInstance.getLadybugIdsByOwner(brownbear);
-            expect(bugs).to.have.lengthOf(4);
+            expect(bugs).to.have.lengthOf(0);
         })
         it("verify owner() contains owner address", async () => {
             const owner = await contractInstance.owner();
@@ -156,7 +158,8 @@ contract("LadybugMinter", (accounts) => {
         });
         it("balanceOf, confirm pre-mint went to owner", async () => {
             // the owner should have four tokens
-            await verifyBalanceOf(contractInstance, brownbear, 4);
+            await verifyBalanceOf(contractInstance, devWalletAddress, 2);
+            await verifyBalanceOf(contractInstance, brownbear, 2);
         });
     })
 
@@ -248,7 +251,8 @@ contract("LadybugMinter", (accounts) => {
             await utils.shouldThrow(contractInstance.mint(curly, {from: curly, value: web3.utils.toWei('0.015', 'ether'), gas: 1000000 }));
         });
         it("verify all owner counts, total minted is same as startAtIndex for next drop", async () => {
-            await verifyBalanceOf(contractInstance, brownbear, 4);
+            await verifyBalanceOf(contractInstance, brownbear, 2);
+            await verifyBalanceOf(contractInstance, devWalletAddress, 2);
             await verifyBalanceOf(contractInstance, larry, 3);
             await verifyBalanceOf(contractInstance, moe, 1);
             await verifyBalanceOf(contractInstance, curly, 1);
@@ -424,12 +428,12 @@ contract("LadybugMinter", (accounts) => {
             await utils.shouldThrow(contractInstance.mintStalledDropToOwner({from: brownbear}));
         });
         it("stalled mint success, price is low (OK)", async () => {
-            await verifyBalanceOf(contractInstance, brownbear, 5);
+            await verifyBalanceOf(contractInstance, brownbear, 1);
 
             // jump 14 days
             await increase((60 * 60 * 24) * 14); // 14 days
             await contractInstance.mintStalledDropToOwner({from: brownbear});
-            await verifyBalanceOf(contractInstance, brownbear, 7);
+            await verifyBalanceOf(contractInstance, brownbear, 3);
         });
 
         it("finish minting 3rd drop via stalled mint, can't start 4th", async () => {
