@@ -1,6 +1,7 @@
 .secret
+.soliumignore
+.soliumrc.json*
 build
-todo.txt
+internal_docs/
 copy_abi.sh
-console-commands.txt
 logs/
