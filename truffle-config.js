@@ -20,6 +20,7 @@
 
 const HDWalletProvider = require('@truffle/hdwallet-provider');
 
+const web3 = require('web3');
 const fs = require('fs');
 // const mnemonic = fs.readFileSync(".secret").toString().trim();
 const privatekey = fs.readFileSync(".secret").toString().trim();
@@ -46,7 +47,6 @@ module.exports = {
      host: "127.0.0.1",     // Localhost (default: none)
      port: 7545,            // Standard Ethereum port (default: none)
      network_id: "1337",    // Any network (default: none)
-     // gas: '30 gwei'
      gasPrice: 40000000000,  // 20 gwei (in wei) (default: 100 gwei)
     },
     // Another network with more advanced options...
@@ -73,7 +73,7 @@ module.exports = {
         return new HDWalletProvider(privatekey, "wss://rinkeby.infura.io/ws/v3/391a7fe345a34a2db1008fa15679e8c7");
       },
       network_id: 4
-    }
+    },
 
     // Useful for private networks
     // private: {
@@ -81,6 +81,13 @@ module.exports = {
     // network_id: 2111,   // This network is yours, in the cloud.
     // production: true    // Treats this network as if it was a public net. (default: false)
     // }
+
+    live: {
+      network_id: 1,
+      provider: () => new HDWalletProvider(privatekey, "https://mainnet.infura.io/v3/a1ebecc8ab574faf95b9098a72b53acf"),
+      gasPrice: web3.utils.toWei('30', 'gwei')
+    }
+
   },
 
   // Set default mocha options here, use special reporters etc.
