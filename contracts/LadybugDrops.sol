@@ -83,6 +83,14 @@ contract LadybugDrops is LadybugFactory {
         return _status();
     }
 
+    function _initializeDrops() internal onlyOwner {
+        uint16 startAtIndex = _RESERVED_LADYBUGS;
+        for (uint8 i = 0; i < drops.length; i++) {
+            drops[i].startAtIndex = startAtIndex;
+            startAtIndex += _TOKENS_PER_DROP;
+        }
+    }
+
     /**
      * @dev Returns the current drop (0-3) in which the next ladybug would be minted.
      * This does not take the drop date into account, so it might not be an active drop.
@@ -104,7 +112,7 @@ contract LadybugDrops is LadybugFactory {
     function _status() internal view returns (uint index, bool active, bool complete) {
         uint8 currentIndex = _currentDropIndex();
         bool isComplete = _currentSupplyIndex() >= _MAX_LADYBUGS;
-        // a drop is active if all drops are not complete, the date is non-zero,
+        // a drop is active if all are not complete, the date is non-zero,
         // and the blockchain time is greater than the drop date.
         bool isActive = isComplete != true &&
             drops[currentIndex].date != 0 &&

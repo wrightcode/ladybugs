@@ -37,9 +37,10 @@ function printArray(arr) {
     }
 }
 
-async function printTokensForAccount(contractInstance, account) {
+async function printTokensForAccount(contractInstance, account, name) {
     let tokens = await contractInstance.getLadybugIdsByOwner(account);
-    console.log('Tokens for ' + account);
+    let who = name !== undefined ? ' ' + name : '';
+    console.log('Tokens for ' + account + who);
     printArray(tokens);
 }
 
@@ -52,6 +53,7 @@ async function verifyDropIsActive(contractInstance, drops, index) {
 
 async function verifyDropIsNotActive(contractInstance, drops, index) {
     let status = await contractInstance.status();
+    // console.log(drops);
     expect(parseInt(status.index)).to.equal(index);
     expect(status.active).to.be.false;
     expect(status.complete).to.be.false;
@@ -122,36 +124,14 @@ contract("LadybugMinter", (accounts) => {
         it("deploying app should mint to owner & first drop be active", async () => {
             brownbearStartingBalance = await web3.eth.getBalance(brownbear);
 
-            // verify there are four drops
-            let drops = await contractInstance.getDrops();
-            expect(drops).to.have.lengthOf(4);
-            first_drop = drops[0];
-
-            await verifyDropIsNotActive(contractInstance, drops, 0);
-
-            // expect the date of all drops to be 0 for now
-            for (let i = 0; i < drops.length; i++) {
-                expect(parseInt(drops[i].date)).to.equal(0);
-                expect(parseInt(drops[i].priceDate)).to.equal(0);
-            }
-
-            // owner has four ladybugs
+            // owner has no ladybugs, before initialization
             let bugs = await contractInstance.getLadybugIdsByOwner(brownbear);
-            expect(bugs).to.have.lengthOf(2);
+            expect(bugs).to.have.lengthOf(0);
             printArray(bugs);
         })
         it("verify owner() contains owner address", async () => {
             const owner = await contractInstance.owner();
             expect(owner).to.equal(brownbear);
-        });
-        it("get shuffle", async () => {
-            const shuffle = await contractInstance.getShuffle();
-            // console.log(shuffle);
-            for (var i = 0; i < shuffle.length; i++) {
-                console.log(i + ": " + parseInt(shuffle[i]));
-            }
-            // console.log(JSON.stringify(shuffle, null, '\t'));
-            expect(shuffle.length).to.equal(24);
         });
         it("total supply", async () => {
             const totalSupply = await contractInstance.totalSupply();
@@ -159,9 +139,81 @@ contract("LadybugMinter", (accounts) => {
         });
         it("total minted", async () => {
             const totalMinted = await contractInstance.totalMinted();
-            expect(parseInt(totalMinted)).to.equal(4);
+            expect(parseInt(totalMinted)).to.equal(0);
         });
         it("total unminted", async () => {
+            const unminted = await contractInstance.unminted();
+            expect(parseInt(unminted)).to.equal(24);
+        });
+        it("total supply equals total minted + total unminted", async () => {
+            const totalSupply = await contractInstance.totalSupply();
+            const totalMinted = await contractInstance.totalMinted();
+            const unminted = await contractInstance.unminted();
+
+            // expect total minted + unminted to equal total supply
+            expect(parseInt(totalSupply)).to.equal(parseInt(totalMinted) + parseInt(unminted));
+        });
+    })
+
+    context("Initialize", async () => {
+        it("call the initialize function", async () => {
+            // confirm failure if not owner
+            await utils.shouldThrow(contractInstance.initialize({ from: moe }));
+            const receipt = await contractInstance.initialize({ from: brownbear });
+            // console.log(receipt);
+            const tx = await web3.eth.getTransaction(receipt.tx);
+            // console.log(tx);
+            const txReceipt = await web3.eth.getTransactionReceipt(receipt.receipt.transactionHash);
+            // console.log(txReceipt);
+            console.log('Initialization Gas Price: ' + tx.gasPrice);
+            console.log('Initialization Gas Used:  ' + txReceipt.gasUsed);
+            const gasCost = tx.gasPrice * txReceipt.gasUsed;
+            console.log('Initialization Gas Cost:  ' + gasCost);
+        });
+        it("cannot call initialize more than once", async () => {
+            // confirm failure if not owner
+            await utils.shouldThrow(contractInstance.initialize({ from: brownbear }));
+        });
+        it("verify status is now available, first drop has not started", async () => {
+            let drops = await contractInstance.getDrops();
+            expect(drops).to.have.lengthOf(4);
+            await verifyDropIsNotActive(contractInstance, drops, 0);
+
+            // expect the date of all drops to be 0 for now
+            for (let i = 0; i < drops.length; i++) {
+                expect(parseInt(drops[i].date)).to.equal(0);
+                expect(parseInt(drops[i].priceDate)).to.equal(0);
+            }
+        })
+        it("balanceOf, confirm pre-mint went to owner", async () => {
+            // the owner should have two tokens
+            // await verifyBalanceOf(contractInstance, devWalletAddress, 2);
+            // const shuffle = await contractInstance.getShuffle({ from: brownbear });
+            await verifyBalanceOf(contractInstance, brownbear, 2);
+            // how many does the onwer have
+            printTokensForAccount(contractInstance, brownbear, 'brownbear');
+        });
+        xit("get shuffle", async () => {
+            // confirm failure if not owner
+            await utils.shouldThrow(contractInstance.getShuffle({ from: moe }));
+            const shuffle = await contractInstance.getShuffle({ from: brownbear });
+            printArray(shuffle);
+            // verify there are 24 bugs in the shuffle
+            expect(shuffle.length).to.equal(24);
+            // verify the contract owner has bugs 2 and 3 (0 based index)
+            let bugs = await contractInstance.getLadybugIdsByOwner(brownbear);
+            bugs = bugs.map(Number); 
+            expect(bugs).to.not.include(parseInt(shuffle[0]));
+            expect(bugs).to.not.include(parseInt(shuffle[1]));
+            expect(bugs).to.include(parseInt(shuffle[2]));
+            expect(bugs).to.include(parseInt(shuffle[3]));
+            expect(bugs).to.not.include(parseInt(shuffle[4]));
+        });
+        it("total minted after initialization", async () => {
+            const totalMinted = await contractInstance.totalMinted();
+            expect(parseInt(totalMinted)).to.equal(4);
+        });
+        it("total unminted after initialization", async () => {
             const unminted = await contractInstance.unminted();
             expect(parseInt(unminted)).to.equal(20);
         });
@@ -178,20 +230,18 @@ contract("LadybugMinter", (accounts) => {
             // expect total minted + unminted to equal total supply
             expect(parseInt(totalSupply)).to.equal(parseInt(totalMinted) + parseInt(unminted));
         });
-        it("balanceOf, confirm pre-mint went to owner", async () => {
-            // the owner should have four tokens
-            // await verifyBalanceOf(contractInstance, devWalletAddress, 2);
-            await verifyBalanceOf(contractInstance, brownbear, 2);
-        });
     })
 
     context("1st Drop confirmation", async () => {
-        it("first drop is NOT active", async () => {
-            let drops = contractInstance.getDrops();
+        it("first drop is NOT defined", async () => {
+            let drops = await contractInstance.getDrops();
+            // console.log('What are drops');
+            // console.log(drops);
+            // expect(drops).to.be.undefined();
             await verifyDropIsNotActive(contractInstance, drops, 0);
         });
         it("active first drop, skip time", async () => {
-            const dropdate = getTestTimePlus((60 * 60 * 2) + (60 * 10)); // 2 hours, 10 minutes
+            const dropdate = getTestTimePlus((60 * 60 * 2) + (60 * 20)); // 2 hours, 20 minutes
             const index = 0,
                 price = convertEthToWei(0.01);
             await contractInstance.updateDrop(index, price, dropdate, { from: brownbear });
@@ -216,12 +266,13 @@ contract("LadybugMinter", (accounts) => {
             const receipt = await contractInstance.mint(moe, { from: moe, value: web3.utils.toWei('0.015', 'ether'), gas: 1000000 });
             const ladybugId = receipt.logs[0].args.tokenId.toNumber();
             const tx = await web3.eth.getTransaction(receipt.tx);
-            console.log(tx);
+            // console.log(tx);
             const txReceipt = await web3.eth.getTransactionReceipt(receipt.receipt.transactionHash);
-            console.log(txReceipt);
-            console.log(tx.gasPrice);
-            console.log(txReceipt.gasUsed);
+            // console.log(txReceipt);
+            console.log('Mint gas price: ' + tx.gasPrice);
+            console.log('Mint gas used:  ' + txReceipt.gasUsed);
             const gasCost = tx.gasPrice * txReceipt.gasUsed;
+            console.log('Mint gas cost:  ' + gasCost);
 
             // confirm this is moe's ladybug
             const owner = await contractInstance.ownerOf(ladybugId);
@@ -282,16 +333,16 @@ contract("LadybugMinter", (accounts) => {
             await utils.shouldThrow(contractInstance.mint(curly, { from: curly, value: web3.utils.toWei('0.015', 'ether'), gas: 1000000 }));
         });
         it("verify all owner counts, total minted is same as startAtIndex for next drop", async () => {
-            printTokensForAccount(contractInstance, shemp);
+            printTokensForAccount(contractInstance, shemp, 'shemp');
             await verifyBalanceOf(contractInstance, brownbear, 2);
-            printTokensForAccount(contractInstance, brownbear);
+            printTokensForAccount(contractInstance, brownbear, 'brownbear');
             // await verifyBalanceOf(contractInstance, devWalletAddress, 2);
             await verifyBalanceOf(contractInstance, larry, 3);
-            printTokensForAccount(contractInstance, larry);
+            printTokensForAccount(contractInstance, larry, 'larry');
             await verifyBalanceOf(contractInstance, moe, 1);
-            printTokensForAccount(contractInstance, moe);
+            printTokensForAccount(contractInstance, moe, 'moe');
             await verifyBalanceOf(contractInstance, curly, 1);
-            printTokensForAccount(contractInstance, curly);
+            printTokensForAccount(contractInstance, curly, 'curly');
         });
         it("confirm mint is complete", async () => {
             // we've mostly tested this above, by confirming there's no active drop
@@ -451,6 +502,7 @@ contract("LadybugMinter", (accounts) => {
 
     context("Stalled mint - transfer to owner", async () => {
         it("stalled mint fails, if not owner", async () => {
+            printTokensForAccount(contractInstance, brownbear, 'brownbear');
             await utils.shouldThrow(contractInstance.mintStalledDropToOwner({ from: moe }));
         });
         it("stalled mint fails, drop date < 30 days", async () => {
@@ -483,6 +535,7 @@ contract("LadybugMinter", (accounts) => {
             await increase((60 * 60 * 24) * 14); // 14 days
             await contractInstance.mintStalledDropToOwner({ from: brownbear });
             await verifyBalanceOf(contractInstance, brownbear, 5);
+            printTokensForAccount(contractInstance, brownbear, 'brownbear');
         });
 
         it("finish minting 3rd drop via stalled mint, can't start 4th", async () => {
@@ -507,6 +560,14 @@ contract("LadybugMinter", (accounts) => {
 
     context("4th drop", async () => {
         it("set price on 4th drop, 25 hours out", async () => {
+            console.log('Token allocation, pre-fourth drop:');
+            printTokensForAccount(contractInstance, brownbear, 'brownbear');
+            printTokensForAccount(contractInstance, moe, 'moe');
+            printTokensForAccount(contractInstance, larry, 'larry');
+            printTokensForAccount(contractInstance, curly, 'curly');
+            printTokensForAccount(contractInstance, shemp, 'shemp');
+            printTokensForAccount(contractInstance, charity, 'charity');
+
             let index = 3,
                 price = convertEthToWei(0.070),
                 dropdate = getTestTimePlus(60 * 60 * 25);
@@ -570,8 +631,14 @@ contract("LadybugMinter", (accounts) => {
             await contractInstance.mint(larry, { from: larry, value: price, gas: 1000000 });
             await contractInstance.mint(larry, { from: larry, value: price, gas: 1000000 });
             await utils.shouldThrow(contractInstance.mint(larry, { from: larry, value: price, gas: 1000000 }));
-            printTokensForAccount(contractInstance, curly);
-            printTokensForAccount(contractInstance, larry);
+
+            console.log('Final token allocation, minting is complete:');
+            printTokensForAccount(contractInstance, brownbear, 'brownbear');
+            printTokensForAccount(contractInstance, moe, 'moe');
+            printTokensForAccount(contractInstance, larry, 'larry');
+            printTokensForAccount(contractInstance, curly, 'curly');
+            printTokensForAccount(contractInstance, shemp, 'shemp');
+            printTokensForAccount(contractInstance, charity, 'charity');
         });
     });
 

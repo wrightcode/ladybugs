@@ -47,7 +47,7 @@ module.exports = {
      host: "127.0.0.1",     // Localhost (default: none)
      port: 7545,            // Standard Ethereum port (default: none)
      network_id: "1337",    // Any network (default: none)
-     gasPrice: 40000000000,  // 20 gwei (in wei) (default: 100 gwei)
+     gasPrice: web3.utils.toWei('60', 'gwei')
     },
     // Another network with more advanced options...
     // advanced: {
@@ -69,10 +69,10 @@ module.exports = {
     // skipDryRun: true     // Skip dry run before migrations? (default: false for public nets )
     // },
     rinkeby: {
-      provider: function() {
-        return new HDWalletProvider(privatekey, "wss://rinkeby.infura.io/ws/v3/391a7fe345a34a2db1008fa15679e8c7");
-      },
-      network_id: 4
+      network_id: 4,
+      provider: () => new HDWalletProvider(privatekey, "wss://rinkeby.infura.io/ws/v3/391a7fe345a34a2db1008fa15679e8c7"),
+      gasPrice: web3.utils.toWei('6', 'gwei'),
+      gas: 5000000
     },
 
     // Useful for private networks
@@ -85,10 +85,12 @@ module.exports = {
     live: {
       network_id: 1,
       provider: () => new HDWalletProvider(privatekey, "https://mainnet.infura.io/v3/a1ebecc8ab574faf95b9098a72b53acf"),
-      gasPrice: web3.utils.toWei('30', 'gwei')
+      gasPrice: web3.utils.toWei('30', 'gwei'),
+      gas: 5000000,
     }
 
   },
+
 
   // Set default mocha options here, use special reporters etc.
   mocha: {
@@ -103,12 +105,14 @@ module.exports = {
       settings: {          // See the solidity docs for advice about optimization and evmVersion
        optimizer: {
          enabled: true,
-         runs: 200
+         runs: 1000
        },
        // evmVersion: "byzantium"
       }
     }
   },
+
+  plugins: ["truffle-contract-size"]
 
   // Truffle DB is currently disabled by default; to enable it, change enabled:
   // false to enabled: true. The default storage location can also be

@@ -1,7 +1,9 @@
 .secret
 .soliumignore
 .soliumrc.json*
-build
+.deps/
+build/
+logs/
+contracts/artifacts/
 internal_docs/
 copy_abi.sh
-logs/

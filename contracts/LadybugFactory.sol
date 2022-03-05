@@ -11,7 +11,25 @@ import "@openzeppelin/contracts/utils/Counters.sol";
  * @author WrightCode
  * @title Ladybug Factory
  * @dev The base-layer data for the Ladybug ERC721 tokens.
- */
+ *
+ * This is my first implementation of a smart contract in Solidity.  It's gone thru quite
+ * a few iterations as I learn my way around the system, gas expenses, and fine tuning the
+ * "expectations" of the contract.
+ *
+ * I do consider this somehwat of a "reference implementation".  It's far from
+ * perfect and the trade-offs made were to enjoy the process, stay well within "budget",
+ * yet provide as fair a minting process as the scope allowed.
+ *
+ * I could have easily continued down the rabbit hole of tuning and features, at the expense
+ * of my own ETH and time, but at some point the goal remained:
+ *
+ *    A) Share the artwork, the ladybugs are ready to fly
+ *    B) Deliever a contract for talking points with future projects.
+ *    C) Learn and have fun doing so.
+ *
+ * If you decide to participate in the minting process or otherwise engage in this project
+ * I hope you do so for fun and enjoy the bugs.
+ *  */
 contract LadybugFactory is Ownable, ERC721 {
 
     address internal _developmentTeamAddress = 0x3254C065f85167003F165E134A391a6ec2c26279;
@@ -45,15 +63,6 @@ contract LadybugFactory is Ownable, ERC721 {
      * @dev There are four drops, 1-4 in the drops array.
      */
     constructor() ERC721("Ladybug Power", "LADYBUG") {
-        uint16 startAtIndex = _RESERVED_LADYBUGS;
-        for (uint8 i = 0; i < drops.length; i++) {
-            drops[i] = Drop(
-                0.0333 ether, // less than a third of a tenth of an eth  :-)
-                0,
-                0,
-                startAtIndex);
-            startAtIndex += _TOKENS_PER_DROP;
-        }
     }
 
     /**

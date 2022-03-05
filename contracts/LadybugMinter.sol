@@ -15,17 +15,28 @@ contract LadybugMinter is LadybugFinances {
     uint private constant DROP_TIME_TOLERANCE = 1728000; // (60*60*24)*20 = 20 days
     uint private constant PRICE_TIME_TOLERANCE = 864000; // (60*60*24)*10 = 10 days
 
-    // the shuffled list of token ids
-    uint16[_MAX_LADYBUGS] internal shuffle;
+    bool private initialized;
+
+    mapping(uint16 => uint16) private _randomized;
 
     /**
-     * @dev Constructor shuffles the deck and premints.
+     * @dev Shuffle the deck, then premint to dev and owner accounts.
      */
-    constructor() LadybugFinances() {
-        // create a shuffled array of tokenIds
-        shuffle = _shuffle();
-        // mint the first batch to owner & developer
-        _mintReservedBugs();
+    function initialize() external onlyOwner {
+        require(!initialized, "Contract already initialized");
+        initialized = true;
+
+        // the development team will get a handful of preminted (but random, shuffled) nfts...
+        for (uint i = 0; i < _RESERVED_LADYBUGS_DEVELOPMENT; i++) {
+            _mintInternal(_developmentTeamAddress);
+        }
+        // ...as will the owner of the contract
+        for (uint i = 0; i < _RESERVED_LADYBUGS_OWNER; i++) {
+            _mintInternal(owner());
+        }
+
+        // prepare the drops
+        _initializeDrops();
     }
 
     /**
@@ -42,14 +53,13 @@ contract LadybugMinter is LadybugFinances {
      * In other words, I will not abandon my ladybugs.
      */
     function mintStalledDropToOwner() external onlyOwner {
-
         (uint _index, bool _active, ) = _status();
         require (_active, "Drop not active");
         require (drops[_index].price <= 0.01 ether, "Price too high");
         require (drops[_index].date < block.timestamp - DROP_TIME_TOLERANCE, "Drop not active long enough");
         require (drops[_index].priceDate < block.timestamp - PRICE_TIME_TOLERANCE, "Price not active long enough");
         for (uint i = _currentSupplyIndex(); i < drops[_index].startAtIndex + _TOKENS_PER_DROP; i++) {
-            _mintInternal(owner());
+            _mintStalled(owner());
         }
     }
 
@@ -99,10 +109,42 @@ contract LadybugMinter is LadybugFinances {
 
     /**
      * @dev Mint the ERC 721 ladybug token, transfer it to the recipient.
+     *
+     * This is a very simple distribution of the bugs, they're not part of a great reveal,
+     * we're not looking to game anyone, they simply want a good home with someone that'll
+     * appreciate them.
+     *
+     * The goal is to mint the ladybugs in a non-sequential order.  To do so, I'm adding a
+     * little "randomness" on each mint.  It's by no means perfect or unpredicatable, but
+     * that's the scope of this project.
+     *
+     * Perhaps my next project, with a larger budget, will merit a more challenging and
+     * sophisticted mint.  That would be a lot of fun to work on.
+     *
+     * Until then, enjoy the bugs as they are, they're ready to fly.
      */
     function _mintInternal(address recipient) internal returns (uint) {
-        // get the mint id from the shuffled array (it's zero based)
-        uint newItemId = shuffle[_currentSupplyIndex()];
+        // the tokens are 1.._MAX_LADYBUGS (i.e. not zero-based)
+        uint16 _index = uint16(_currentSupplyIndex() + 1);
+        uint newItemId;
+
+        // check if this index is part of the mapping
+        if (_randomized[_index] != 0) {
+            newItemId = _randomized[_index];
+            // it would be nice to remove the entry from _randomized after retrieving the value, 
+            // but the gas was too expensive and so i chose not not, on behalf of the minter
+        } else {
+            uint16 n = uint16(_index + uint256(keccak256(abi.encodePacked(block.timestamp))) % (_MAX_LADYBUGS - _currentSupplyIndex()));
+            // if the random number is not already holding a swap, use it ...
+            if (_randomized[n] == 0 && _index != n) {
+                _randomized[n] = _index;
+                newItemId = n;
+            } else {
+                // ... else just use the index, the random swap (n) already has a value
+                newItemId = _index;
+            }
+        }
+
         _mint(recipient, newItemId);
         // increment the supply counter
         _incrementCurrentSupplyIndex();
@@ -110,45 +152,29 @@ contract LadybugMinter is LadybugFinances {
     }
 
     /**
-     * @dev Create an array of all the ladybug token ids, 1 to _MAX_LADYBUGS, then shuffle them.
-     *
-     *  This is a very simple distribution of the bugs, they're not part of a great reveal,
-     * we're not looking to game anyone, they simply want a good home with someone that'll
-     * appreciate them.  Perhaps my next project, with a larger budget, will merit a
-     * more challenging and sophisticted mint.  That would be a lot of fun to work on.
-     * Until then, enjoy the bugs as they are, they're ready to fly.
-     *
+     * @dev Mint the stalled-out ERC 721 ladybug tokens, transfer it to the recipient.
+     * Gas is expensive in this process, so we'll look at any previously "randomized"
+     * elements and use them, otherwise, we'll just go in order to reduce gas prices.
      */
-    function _shuffle() internal view returns (uint16[_MAX_LADYBUGS] memory) {
-        // do this in memory to save on gas (fun fact: ladybug "gas" are aphids)
-        uint16[_MAX_LADYBUGS] memory memoryArray;
-        // populate an array from 1 to _MAX_LADYBUGS...
-        for (uint i = 0; i < _MAX_LADYBUGS; i++) {
-            memoryArray[i] = uint16(i+1);
-        }
-        // ... then shuffle it using this fisher yates algorithm...
-        for (uint16 i = 0; i < memoryArray.length; i++) {
-            uint16 n = uint16(i + uint256(keccak256(abi.encodePacked(block.timestamp))) % (memoryArray.length - i));
-            uint16 temp = memoryArray[n];
-            memoryArray[n] = memoryArray[i];
-            memoryArray[i] = temp;
-        }
-        return memoryArray;
-    }
+    function _mintStalled(address recipient) internal returns (uint) {
+        // get the mint id from the shuffled array (it's zero based)
+        uint16 _index = uint16(_currentSupplyIndex() + 1);
+        uint newItemId;
 
-    /**
-     * @dev Mint the reserved ERC721 ladybug tokens to the dev team and owner.
-     */
-    function _mintReservedBugs() private onlyOwner {
-        // the development team will get a handful of preminted (but random, shuffled) nfts...
-        for (uint i = 0; i < _RESERVED_LADYBUGS_DEVELOPMENT; i++) {
-            _mintInternal(_developmentTeamAddress);
+        // check if this index is part of the mapping
+        if (_randomized[_index] != 0) {
+            newItemId = _randomized[_index];
+            // it would be nice to remove the entry from _randomized after retrieving the value, 
+            // but the gas was too expensive and so i chose not not, on behalf of the minter
+        } else {
+            // ... else just use the index, it's too expensive in gas, to randomize here
+            newItemId = _index;
         }
-        // ...as will the owner of the contract
-        for (uint i = 0; i < _RESERVED_LADYBUGS_OWNER; i++) {
-            _mintInternal(owner());
-        }
-    }
 
+        _mint(recipient, newItemId);
+        // increment the supply counter
+        _incrementCurrentSupplyIndex();
+        return newItemId;
+    }
 
 }
